@@ -84,7 +84,9 @@ type App struct {
 }
 
 type appConfig struct {
-	EnginePath string `json:"enginePath"`
+	EnginePath        string `json:"enginePath"`
+	CookieFromBrowser string `json:"cookieFromBrowser,omitempty"`
+	CookieFile        string `json:"cookieFile,omitempty"`
 }
 
 func (a *App) configPath() string {
@@ -226,6 +228,51 @@ func (a *App) SelectEngine() (map[string]interface{}, error) {
 // OpenEngineDownloadPage opens the official yt-dlp download in the browser.
 func (a *App) OpenEngineDownloadPage() {
 	runtime.BrowserOpenURL(a.ctx, "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")
+}
+
+// cookieArgs returns yt-dlp arguments for site authentication (YouTube etc.).
+func (a *App) cookieArgs() []string {
+	switch {
+	case a.cfg.CookieFile != "":
+		if _, err := os.Stat(a.cfg.CookieFile); err == nil {
+			return []string{"--cookies", a.cfg.CookieFile}
+		}
+	case a.cfg.CookieFromBrowser != "":
+		return []string{"--cookies-from-browser", a.cfg.CookieFromBrowser}
+	}
+	return nil
+}
+
+// SetCookieConfig configures site cookies: either extract from a browser
+// (chrome/edge/firefox/...) or use an exported cookies.txt file. Setting one
+// clears the other; both empty clears the configuration.
+func (a *App) SetCookieConfig(fromBrowser, file string) {
+	a.cfg.CookieFromBrowser = strings.TrimSpace(fromBrowser)
+	a.cfg.CookieFile = strings.TrimSpace(file)
+	a.saveConfig()
+}
+
+// GetCookieConfig returns the active cookie configuration.
+func (a *App) GetCookieConfig() map[string]string {
+	return map[string]string{
+		"fromBrowser": a.cfg.CookieFromBrowser,
+		"file":        a.cfg.CookieFile,
+	}
+}
+
+// SelectCookiesFile opens a native dialog to pick an exported cookies.txt.
+func (a *App) SelectCookiesFile() (string, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "选择 cookies.txt",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "cookies.txt (*.txt)", Pattern: "*.txt"},
+			{DisplayName: "所有文件", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // ensureEngineAvailable returns a friendly error when no engine is configured.
@@ -414,6 +461,7 @@ func (a *App) parseOne(ctx context.Context, link string, noPlaylist, flatPlaylis
 		return nil, err
 	}
 	args := []string{"-J", "--no-warnings"}
+	args = append(args, a.cookieArgs()...)
 	if noPlaylist {
 		args = append(args, "--no-playlist")
 	}
@@ -592,6 +640,7 @@ func (a *App) StartDownload(taskID, link, formatSel, dir string) error {
 		"--print", "after_move:filepath",
 		"-o", filepath.Join(dir, "%(title).150B.%(ext)s"),
 	}
+	args = append(args, a.cookieArgs()...)
 	if formatSel != "" {
 		args = append(args, "-f", formatSel)
 	}

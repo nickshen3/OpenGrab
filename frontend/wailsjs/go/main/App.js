@@ -14,6 +14,10 @@ export function EngineStatus() {
   return window['go']['main']['App']['EngineStatus']();
 }
 
+export function GetCookieConfig() {
+  return window['go']['main']['App']['GetCookieConfig']();
+}
+
 export function OpenEngineDownloadPage() {
   return window['go']['main']['App']['OpenEngineDownloadPage']();
 }
@@ -42,8 +46,16 @@ export function RevealFile(arg1) {
   return window['go']['main']['App']['RevealFile'](arg1);
 }
 
+export function SelectCookiesFile() {
+  return window['go']['main']['App']['SelectCookiesFile']();
+}
+
 export function SelectEngine() {
   return window['go']['main']['App']['SelectEngine']();
+}
+
+export function SetCookieConfig(arg1, arg2) {
+  return window['go']['main']['App']['SetCookieConfig'](arg1, arg2);
 }
 
 export function SetProxy(arg1) {

@@ -8,6 +8,8 @@ export function CancelParse(arg1:string):Promise<void>;
 
 export function EngineStatus():Promise<Record<string, any>>;
 
+export function GetCookieConfig():Promise<Record<string, string>>;
+
 export function OpenEngineDownloadPage():Promise<void>;
 
 export function OpenFolder(arg1:string):Promise<void>;
@@ -22,7 +24,11 @@ export function PickDirectory():Promise<string>;
 
 export function RevealFile(arg1:string):Promise<void>;
 
+export function SelectCookiesFile():Promise<string>;
+
 export function SelectEngine():Promise<Record<string, any>>;
+
+export function SetCookieConfig(arg1:string,arg2:string):Promise<void>;
 
 export function SetProxy(arg1:string):Promise<void>;
 

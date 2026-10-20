@@ -54,6 +54,9 @@ type AppBinding = {
   PickDirectory(): Promise<string>;
   SelectEngine(): Promise<EngineStatus>;
   OpenEngineDownloadPage(): Promise<void>;
+  SetCookieConfig(fromBrowser: string, file: string): Promise<void>;
+  GetCookieConfig(): Promise<{ fromBrowser: string; file: string }>;
+  SelectCookiesFile(): Promise<string>;
   StartDownload(taskId: string, url: string, formatSel: string, dir: string): Promise<void>;
   CancelDownload(taskId: string): Promise<void>;
   EngineStatus(): Promise<EngineStatus>;

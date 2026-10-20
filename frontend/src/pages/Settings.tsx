@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Form, Input, Button, message, Descriptions, Space, Typography } from 'antd';
+import { Card, Form, Input, Button, message, Descriptions, Space, Typography, Select } from 'antd';
 import { api, EngineStatus } from '../api';
 
 export default function Settings() {
@@ -8,6 +8,8 @@ export default function Settings() {
   const [dir, setDir] = useState(localStorage.getItem('opengrab.dir') || '');
   const [proxy, setProxy] = useState(localStorage.getItem('opengrab.proxy') || '');
   const [busy, setBusy] = useState(false);
+  const [cookieBrowser, setCookieBrowser] = useState<string | undefined>(undefined);
+  const [cookieFile, setCookieFile] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     // reads the backend's startup-cached status; no yt-dlp process is spawned
@@ -23,7 +25,40 @@ export default function Settings() {
         setChecked(true);
       }
     });
+    api.GetCookieConfig().then((c) => {
+      setCookieBrowser(c?.fromBrowser || undefined);
+      setCookieFile(c?.file || undefined);
+    });
   }, []);
+
+  async function pickCookieBrowser(v: string) {
+    const browser = v || '';
+    setCookieBrowser(browser || undefined);
+    if (browser) setCookieFile(undefined);
+    await api.SetCookieConfig(browser, '');
+    message.success(browser ? `已使用 ${browser} 浏览器的 Cookie` : '已清除 Cookie 配置');
+  }
+
+  async function pickCookieFile() {
+    try {
+      const p = await api.SelectCookiesFile();
+      if (p) {
+        setCookieFile(p);
+        setCookieBrowser(undefined);
+        await api.SetCookieConfig('', p);
+        message.success('已使用 cookies.txt');
+      }
+    } catch (e: any) {
+      if (String(e) !== '取消') message.error(String(e));
+    }
+  }
+
+  async function clearCookies() {
+    setCookieBrowser(undefined);
+    setCookieFile(undefined);
+    await api.SetCookieConfig('', '');
+    message.success('已清除 Cookie 配置');
+  }
 
   async function selectEngine() {
     setBusy(true);
@@ -112,6 +147,38 @@ export default function Settings() {
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 8, fontSize: 12 }}>
           默认使用程序目录旁自带的 yt-dlp.exe；没有自带时可在上方手动选择，或点“官方下载”
           在浏览器下载 yt-dlp.exe 后再选择它。
+        </Typography.Paragraph>
+      </Card>
+
+      <Card title="站点 Cookie（YouTube 等登录验证）" style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Select
+            style={{ minWidth: 200 }}
+            placeholder="从浏览器读取 Cookie"
+            value={cookieBrowser}
+            onChange={pickCookieBrowser}
+            allowClear
+            options={[
+              { value: 'edge', label: 'Edge' },
+              { value: 'chrome', label: 'Chrome' },
+              { value: 'firefox', label: 'Firefox' },
+              { value: 'brave', label: 'Brave' },
+              { value: 'opera', label: 'Opera' },
+              { value: 'safari', label: 'Safari' },
+            ]}
+          />
+          <Button onClick={pickCookieFile}>使用 cookies.txt...</Button>
+          {(cookieBrowser || cookieFile) && <Button danger onClick={clearCookies}>清除</Button>}
+        </Space>
+        {cookieFile && (
+          <Typography.Paragraph style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }} copyable>
+            {cookieFile}
+          </Typography.Paragraph>
+        )}
+        <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
+          YouTube 出现「Sign in to confirm you're not a bot」时：选择一个已登录该站点的浏览器，
+          或用浏览器扩展（如 Get cookies.txt LOCALLY）导出 cookies.txt 后选择该文件。
+          两种方式二选一，配置对所有解析和下载生效。
         </Typography.Paragraph>
       </Card>
 
