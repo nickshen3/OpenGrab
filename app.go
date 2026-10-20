@@ -143,6 +143,43 @@ func (a *App) startup(ctx context.Context) {
 	// detect engine once in the background at startup, so the settings page
 	// can show the cached status without re-running yt-dlp on every visit
 	go a.refreshEngineStatus()
+	// keep the bgutil PO-token server available for YouTube (best effort)
+	go a.ensurePOTServer()
+}
+
+var potServerCmd *exec.Cmd
+
+// ensurePOTServer starts the local bgutil PO-token HTTP server (port 4416)
+// when it is not already running and the default install exists.
+func (a *App) ensurePOTServer() {
+	if resp, err := http.Get("http://127.0.0.1:4416/ping"); err == nil {
+		resp.Body.Close()
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	main := filepath.Join(home, "bgutil-ytdlp-pot-provider", "server", "build", "main.js")
+	if _, err := os.Stat(main); err != nil {
+		return
+	}
+	a.accessLog("starting bgutil PO-token server")
+	cmd := exec.Command("node", main, "--port", "4416")
+	hideWindow(cmd)
+	if err := cmd.Start(); err != nil {
+		a.accessLog("PO-token server start failed: %v", err)
+		return
+	}
+	potServerCmd = cmd
+	go func() { _ = cmd.Wait() }()
+}
+
+// shutdown stops the PO-token server we started.
+func (a *App) shutdown(ctx context.Context) {
+	if potServerCmd != nil && potServerCmd.Process != nil {
+		_ = potServerCmd.Process.Kill()
+	}
 }
 
 func (a *App) refreshEngineStatus() {
