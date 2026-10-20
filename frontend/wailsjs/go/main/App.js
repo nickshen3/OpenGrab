@@ -85,3 +85,7 @@ export function StartDownload(arg1, arg2, arg3, arg4) {
 export function UpdateEngine() {
   return window['go']['main']['App']['UpdateEngine']();
 }
+
+export function UpdateEngineNightly() {
+  return window['go']['main']['App']['UpdateEngineNightly']();
+}

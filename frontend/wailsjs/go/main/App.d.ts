@@ -43,3 +43,5 @@ export function SetProxy(arg1:string):Promise<void>;
 export function StartDownload(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function UpdateEngine():Promise<string>;
+
+export function UpdateEngineNightly():Promise<string>;

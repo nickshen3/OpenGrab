@@ -177,6 +177,25 @@ export default function Settings() {
               检查更新
             </Button>
           )}
+          {engine?.ok && (
+            <Button
+              loading={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await api.UpdateEngineNightly();
+                  setEngine(await api.EngineStatus());
+                  message.success('已更新到测试版（nightly）引擎');
+                } catch (e: any) {
+                  message.error(String(e));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              更新到测试版
+            </Button>
+          )}
         </Space>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 8, fontSize: 12 }}>
           默认使用程序目录旁自带的 yt-dlp.exe；没有自带时可在上方手动选择，或点“官方下载”

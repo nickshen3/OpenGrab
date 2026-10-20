@@ -66,6 +66,7 @@ type AppBinding = {
   EngineStatus(): Promise<EngineStatus>;
   EnsureEngine(): Promise<string>;
   UpdateEngine(): Promise<string>;
+  UpdateEngineNightly(): Promise<string>;
   SetProxy(p: string): Promise<void>;
   OpenFolder(path: string): Promise<void>;
 };

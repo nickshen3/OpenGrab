@@ -183,12 +183,12 @@ func (a *App) EngineStatus() map[string]interface{} {
 	return a.engine
 }
 
-// installEngine downloads the latest yt-dlp.exe into the managed AppData
+// installEngine downloads the given yt-dlp.exe into the managed AppData
 // location and switches the active engine to it.
-func (a *App) installEngine() (string, error) {
+func (a *App) installEngine(url string) (string, error) {
 	_ = os.MkdirAll(a.binDir, 0o755)
 	tmp := a.managed + ".tmp"
-	if err := downloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", tmp, a.proxy); err != nil {
+	if err := downloadFile(url, tmp, a.proxy); err != nil {
 		return "", err
 	}
 	_ = os.Remove(a.managed)
@@ -307,7 +307,17 @@ func (a *App) ensureEngineAvailable() error {
 
 // UpdateEngine replaces yt-dlp.exe with the latest release.
 func (a *App) UpdateEngine() (string, error) {
-	if _, err := a.installEngine(); err != nil {
+	if _, err := a.installEngine("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"); err != nil {
+		return "", err
+	}
+	a.refreshEngineStatus()
+	return a.ytdlp, nil
+}
+
+// UpdateEngineNightly installs the nightly build, which tracks the newest
+// YouTube/extractor fixes ahead of the stable channel.
+func (a *App) UpdateEngineNightly() (string, error) {
+	if _, err := a.installEngine("https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe"); err != nil {
 		return "", err
 	}
 	a.refreshEngineStatus()
