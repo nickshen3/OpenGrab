@@ -10,12 +10,24 @@ export function CancelParse(arg1) {
   return window['go']['main']['App']['CancelParse'](arg1);
 }
 
+export function ClearDebugLog() {
+  return window['go']['main']['App']['ClearDebugLog']();
+}
+
 export function EngineStatus() {
   return window['go']['main']['App']['EngineStatus']();
 }
 
 export function GetCookieConfig() {
   return window['go']['main']['App']['GetCookieConfig']();
+}
+
+export function GetDebugLog() {
+  return window['go']['main']['App']['GetDebugLog']();
+}
+
+export function GetDebugLogEnabled() {
+  return window['go']['main']['App']['GetDebugLogEnabled']();
 }
 
 export function OpenEngineDownloadPage() {
@@ -56,6 +68,10 @@ export function SelectEngine() {
 
 export function SetCookieConfig(arg1, arg2) {
   return window['go']['main']['App']['SetCookieConfig'](arg1, arg2);
+}
+
+export function SetDebugLog(arg1) {
+  return window['go']['main']['App']['SetDebugLog'](arg1);
 }
 
 export function SetProxy(arg1) {

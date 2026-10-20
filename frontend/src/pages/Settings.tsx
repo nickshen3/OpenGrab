@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Form, Input, Button, message, Descriptions, Space, Typography, Select } from 'antd';
+import { Card, Form, Input, Button, message, Descriptions, Space, Typography, Select, Switch, Modal } from 'antd';
 import { api, EngineStatus } from '../api';
 
 export default function Settings() {
@@ -58,6 +58,40 @@ export default function Settings() {
     setCookieFile(undefined);
     await api.SetCookieConfig('', '');
     message.success('已清除 Cookie 配置');
+  }
+
+  const [debugOn, setDebugOn] = useState(false);
+  const [logText, setLogText] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.GetDebugLogEnabled().then(setDebugOn);
+  }, []);
+
+  async function toggleDebug(on: boolean) {
+    setDebugOn(on);
+    await api.SetDebugLog(on);
+    message.success(on ? '调试日志已开启' : '调试日志已关闭');
+  }
+
+  async function viewLog() {
+    const t = await api.GetDebugLog();
+    setLogText(t || '（日志为空：开启开关后重新操作一次，再回来查看）');
+  }
+
+  async function copyLog() {
+    if (!logText) return;
+    try {
+      await navigator.clipboard.writeText(logText);
+      message.success('日志已复制到剪贴板');
+    } catch {
+      message.error('复制失败，请在弹窗中手动选择复制');
+    }
+  }
+
+  async function clearLog() {
+    await api.ClearDebugLog();
+    setLogText('');
+    message.success('日志已清空');
   }
 
   async function selectEngine() {
@@ -180,6 +214,32 @@ export default function Settings() {
           或用浏览器扩展（如 Get cookies.txt LOCALLY）导出 cookies.txt 后选择该文件。
           两种方式二选一，配置对所有解析和下载生效。
         </Typography.Paragraph>
+      </Card>
+
+      <Card title="调试日志" style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Switch checked={debugOn} onChange={toggleDebug} checkedChildren="开" unCheckedChildren="关" />
+          <span style={{ color: '#6b7280' }}>开启后记录每次解析/下载的完整命令与错误输出</span>
+          <Button size="small" onClick={viewLog}>查看日志</Button>
+          <Button size="small" danger onClick={clearLog}>清空日志</Button>
+        </Space>
+        <Modal
+          title="调试日志（最近 800 行）"
+          open={logText !== null}
+          onCancel={() => setLogText(null)}
+          width={760}
+          footer={[
+            <Button key="copy" type="primary" onClick={copyLog}>复制全部</Button>,
+            <Button key="close" onClick={() => setLogText(null)}>关闭</Button>,
+          ]}
+        >
+          <Input.TextArea
+            value={logText || ''}
+            readOnly
+            autoSize={{ minRows: 12, maxRows: 24 }}
+            style={{ fontFamily: 'Consolas, monospace', fontSize: 12 }}
+          />
+        </Modal>
       </Card>
 
       <Card title="下载目录" style={{ marginBottom: 16 }}>

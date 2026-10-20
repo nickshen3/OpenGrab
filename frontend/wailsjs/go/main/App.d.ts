@@ -6,9 +6,15 @@ export function CancelDownload(arg1:string):Promise<void>;
 
 export function CancelParse(arg1:string):Promise<void>;
 
+export function ClearDebugLog():Promise<void>;
+
 export function EngineStatus():Promise<Record<string, any>>;
 
 export function GetCookieConfig():Promise<Record<string, string>>;
+
+export function GetDebugLog():Promise<string>;
+
+export function GetDebugLogEnabled():Promise<boolean>;
 
 export function OpenEngineDownloadPage():Promise<void>;
 
@@ -29,6 +35,8 @@ export function SelectCookiesFile():Promise<string>;
 export function SelectEngine():Promise<Record<string, any>>;
 
 export function SetCookieConfig(arg1:string,arg2:string):Promise<void>;
+
+export function SetDebugLog(arg1:boolean):Promise<void>;
 
 export function SetProxy(arg1:string):Promise<void>;
 

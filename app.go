@@ -87,6 +87,7 @@ type appConfig struct {
 	EnginePath        string `json:"enginePath"`
 	CookieFromBrowser string `json:"cookieFromBrowser,omitempty"`
 	CookieFile        string `json:"cookieFile,omitempty"`
+	DebugLog          bool   `json:"debugLog,omitempty"`
 }
 
 func (a *App) configPath() string {
@@ -230,10 +231,23 @@ func (a *App) OpenEngineDownloadPage() {
 	runtime.BrowserOpenURL(a.ctx, "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")
 }
 
+// cookieCopyPath is our private copy of the selected cookies.txt. yt-dlp
+// writes the cookie jar back after use, which fails when the original export
+// file is locked by the browser/AV; running on a copy avoids that.
+func (a *App) cookieCopyPath() string {
+	if appData, err := os.UserConfigDir(); err == nil {
+		return filepath.Join(appData, "OpenGrab", "cookies.txt")
+	}
+	return "cookies.txt"
+}
+
 // cookieArgs returns yt-dlp arguments for site authentication (YouTube etc.).
 func (a *App) cookieArgs() []string {
 	switch {
 	case a.cfg.CookieFile != "":
+		if _, err := os.Stat(a.cookieCopyPath()); err == nil {
+			return []string{"--cookies", a.cookieCopyPath()}
+		}
 		if _, err := os.Stat(a.cfg.CookieFile); err == nil {
 			return []string{"--cookies", a.cfg.CookieFile}
 		}
@@ -249,6 +263,14 @@ func (a *App) cookieArgs() []string {
 func (a *App) SetCookieConfig(fromBrowser, file string) {
 	a.cfg.CookieFromBrowser = strings.TrimSpace(fromBrowser)
 	a.cfg.CookieFile = strings.TrimSpace(file)
+	if a.cfg.CookieFile != "" {
+		// refresh our working copy from the selected export
+		if b, err := os.ReadFile(a.cfg.CookieFile); err == nil {
+			_ = os.WriteFile(a.cookieCopyPath(), b, 0o644)
+		}
+	} else {
+		_ = os.Remove(a.cookieCopyPath())
+	}
 	a.saveConfig()
 }
 
@@ -388,6 +410,62 @@ func (a *App) debugLog(msg string) {
 	}
 }
 
+// logFile is the verbose debug log controlled by the settings switch.
+func (a *App) logFile() string {
+	if appData, err := os.UserConfigDir(); err == nil {
+		return filepath.Join(appData, "OpenGrab", "logs", "opengrab.log")
+	}
+	return "opengrab.log"
+}
+
+// accessLog appends a timestamped line to the verbose log when debugging is on.
+func (a *App) accessLog(format string, args ...interface{}) {
+	if !a.cfg.DebugLog {
+		return
+	}
+	f := a.logFile()
+	_ = os.MkdirAll(filepath.Dir(f), 0o755)
+	fh, err := os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer fh.Close()
+	_, _ = fh.WriteString(time.Now().Format("2006-01-02 15:04:05") + " " + fmt.Sprintf(format, args...) + "\n")
+}
+
+// SetDebugLog toggles verbose logging.
+func (a *App) SetDebugLog(on bool) {
+	a.cfg.DebugLog = on
+	a.saveConfig()
+	a.accessLog("debug logging %v", on)
+}
+
+// GetDebugLog returns the tail of the verbose log for viewing/copying.
+func (a *App) GetDebugLog() (string, error) {
+	b, err := os.ReadFile(a.logFile())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	lines := strings.Split(strings.TrimRight(string(b), "\n"), "\n")
+	if len(lines) > 800 {
+		lines = lines[len(lines)-800:]
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+// ClearDebugLog truncates the verbose log.
+func (a *App) ClearDebugLog() {
+	_ = os.Remove(a.logFile())
+}
+
+// GetDebugLogEnabled reports whether verbose logging is on.
+func (a *App) GetDebugLogEnabled() bool {
+	return a.cfg.DebugLog
+}
+
 // ParsePlaylist analyzes a playlist / channel / profile URL and returns its
 // entries (fully resolved: titles, durations, thumbnails) for batch
 // downloading. parseID allows cancellation.
@@ -474,6 +552,7 @@ func (a *App) parseOne(ctx context.Context, link string, noPlaylist, flatPlaylis
 		out []byte
 		err error
 	)
+	a.accessLog("parse args=%v", args)
 	runErr := engineAttempt(func() error {
 		c, cancel := context.WithTimeout(ctx, 180*time.Second)
 		defer cancel()
@@ -482,11 +561,14 @@ func (a *App) parseOne(ctx context.Context, link string, noPlaylist, flatPlaylis
 		hideWindow(cmd)
 		out, err = cmd.Output()
 		if err != nil {
+			if ee, ok := err.(*exec.ExitError); ok {
+				a.accessLog("parse failed: %s", fixEncoding(string(ee.Stderr)))
+				if len(ee.Stderr) > 0 {
+					return errors.New(firstLine(fixEncoding(string(ee.Stderr))))
+				}
+			}
 			if c.Err() == context.Canceled {
 				return errCanceled
-			}
-			if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
-				return errors.New(firstLine(fixEncoding(string(ee.Stderr))))
 			}
 			return err
 		}
@@ -697,6 +779,9 @@ func (a *App) StartDownload(taskID, link, formatSel, dir string) error {
 	go func() {
 		errBytes, _ := io.ReadAll(stderr)
 		err := cmd.Wait()
+		if len(errBytes) > 0 {
+			a.accessLog("download stderr: %s", fixEncoding(string(errBytes)))
+		}
 		a.mu.Lock()
 		delete(a.tasks, taskID)
 		a.mu.Unlock()

@@ -57,6 +57,10 @@ type AppBinding = {
   SetCookieConfig(fromBrowser: string, file: string): Promise<void>;
   GetCookieConfig(): Promise<{ fromBrowser: string; file: string }>;
   SelectCookiesFile(): Promise<string>;
+  SetDebugLog(on: boolean): Promise<void>;
+  GetDebugLogEnabled(): Promise<boolean>;
+  GetDebugLog(): Promise<string>;
+  ClearDebugLog(): Promise<void>;
   StartDownload(taskId: string, url: string, formatSel: string, dir: string): Promise<void>;
   CancelDownload(taskId: string): Promise<void>;
   EngineStatus(): Promise<EngineStatus>;
