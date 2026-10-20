@@ -1,3 +1,23 @@
-build/bin
-node_modules
-frontend/dist
+# build outputs
+build/bin/
+build/*.zip
+*.exe
+
+# frontend
+node_modules/
+frontend/dist/
+frontend/package.json.md5
+
+# logs
+*.log
+debug.log
+
+# local caches / tooling
+.gopath/
+.gocache/
+.tmp/
+.acl-recovery/
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
